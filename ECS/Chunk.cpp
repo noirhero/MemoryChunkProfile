@@ -48,6 +48,14 @@ namespace Chunk {
         }
     }
 
+    BodyRefs BodyHandler::Get(BodyIndex index) const {
+        BodyRefs result;
+        for(const auto& [size, offset] : std::views::values(_types)) {
+            result.emplace_back(&_body.memory[offset * _packCount + size * index]);
+        }
+        return result;
+    }
+
     BodyRef BodyHandler::Get(Hash findHash) const {
         const auto& [size, offset] = _types[findHash];
         return &_body.memory[offset * _packCount];

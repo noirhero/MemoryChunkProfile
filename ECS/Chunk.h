@@ -27,6 +27,7 @@ namespace Chunk {
 
     using     HashBySizeOffsetMap        = std::map<Hash, std::pair<Size, Size>>;
     using     BodyRef                    = uint8_t*;
+    using     BodyRefs                   = std::vector<BodyRef>;
     using     BodyIndex                  = Size;
     constexpr BodyIndex InvalidBodyIndex = -1;
 
@@ -41,6 +42,7 @@ namespace Chunk {
         BodyIndex                    Allocate() const;
         void                         Free(BodyIndex index) const;
 
+        BodyRefs                     Get(BodyIndex index) const;
         BodyRef                      Get(Hash findHash) const;
 
     private:
