@@ -30,5 +30,5 @@ namespace {
 }
 
 int main() {
-    Scenario::Run(1/*ScenarioSelectProcess()*/);
+    Scenario::Run(ScenarioSelectProcess());
 }

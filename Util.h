@@ -27,5 +27,10 @@ namespace Util {
 
     namespace Random {
         uint32_t Get(uint32_t minValue, uint32_t maxValue);
+
+        template<typename T>
+        __inline T Distribution(T minValue, T maxValue) {
+            return static_cast<T>(Get(static_cast<uint32_t>(minValue), static_cast<uint32_t>(maxValue)));
+        }
     }
 }

@@ -67,6 +67,7 @@ namespace {
         PrintScreenSystem(Entities& entities, const Util::Timer& timer, float intervalTime) : System(entities), _timer(timer), _interval(intervalTime) {
         }
         ~PrintScreenSystem() {
+            Print();
             fmt::print("Ratio FPS          : {}\n", _ratioFrame);
         }
 
@@ -75,18 +76,21 @@ namespace {
             _checkTime -= delta;
             if (0.0f >= _checkTime) {
                 _checkTime = _interval;
-
-                system("cls");
-
-                fmt::print("Total entity count : {}\n", _entities.size());
-                fmt::print("Total time         : {}\n", _timer.Total());
-                fmt::print("FPS                : {}\n", _timer.Frame());
-
-                _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
+                Print();
             }
         }
 
     private:
+        void               Print() {
+            system("cls");
+
+            fmt::print("Total entity count : {}\n", _entities.size());
+            fmt::print("Total time         : {}\n", _timer.Total());
+            fmt::print("FPS                : {}\n", _timer.Frame());
+
+            _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
+        }
+
         const Util::Timer& _timer;
         const float        _interval;
         float              _checkTime = 0.0f;
@@ -95,11 +99,8 @@ namespace {
 
     class CreateEntitySystem final : public System {
     public:
-        explicit CreateEntitySystem(Entities& entities, float intervalTime, size_t maxCount)
-            : System(entities)
-            , _interval(intervalTime), _maxCount(maxCount) {
-
-            for (uint32_t i = 0; i < 1000; ++i) {
+        explicit CreateEntitySystem(Entities& entities, size_t maxCount) : System(entities), _maxCount(maxCount) {
+            for (std::remove_const<decltype(_maxCount)>::type i = 0; i < _maxCount; ++i) {
                 _entities.emplace_back(new Entity);
                 auto* entity = _entities.back();
                 entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
@@ -116,24 +117,17 @@ namespace {
                 return;
             }
 
-            _checkTime -= delta;
-            if (0.0f >= _checkTime) {
-                _checkTime += _interval;
-
-                _entities.emplace_back(new Entity);
-                auto* entity = _entities.back();
-                entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
-                entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
-                entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
-                entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
-                entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ static_cast<float>(Util::Random::Get(1, 10)) });
-            }
+            _entities.emplace_back(new Entity);
+            auto* entity = _entities.back();
+            entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
+            entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
+            entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
+            entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
+            entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ static_cast<float>(Util::Random::Get(1, 10)) });
         }
 
     private:
-        const float  _interval;
         const size_t _maxCount;
-        float        _checkTime = 0.0f;
     };
 
     class DestroyEntitySystem final : public System {
@@ -208,18 +202,18 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(entities, timer, 1.0f);
-            CreateEntitySystem createSystem(entities, 0.1f, 10000);
+            CreateEntitySystem createSystem(entities, 10000);
             DestroyEntitySystem destroySystem(entities);
             RotationSystem rotateSystem(entities);
             TransformSystem transformSystem(entities);
 
-            while (5.0f >= timer.Total()) {
+            while (60.0f >= timer.Total()) {
                 //std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 timer.Update();
 
                 printScreenSystem.Run(timer.Delta());
                 createSystem.Run(timer.Delta());
-                destroySystem.Run(timer.Delta());
+                //destroySystem.Run(timer.Delta());
                 rotateSystem.Run(timer.Delta());
                 transformSystem.Run(timer.Delta());
             }
