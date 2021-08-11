@@ -202,7 +202,7 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(entities, timer, 1.0f);
-            CreateEntitySystem createSystem(entities, 10000);
+            CreateEntitySystem createSystem(entities, 100000);
             DestroyEntitySystem destroySystem(entities);
             RotationSystem rotateSystem(entities);
             TransformSystem transformSystem(entities);

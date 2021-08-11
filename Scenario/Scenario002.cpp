@@ -180,7 +180,7 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(timer, 1.0f);
-            CreateEntitySystem createSystem(ecsEngine, 10000);
+            CreateEntitySystem createSystem(ecsEngine, 100000);
             DestroyEntitySystem destroySystem(ecsEngine);
             RotationSystem rotationSystem;
             TransformSystem transformSystem;
