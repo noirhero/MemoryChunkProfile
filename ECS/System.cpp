@@ -7,10 +7,10 @@ namespace ECS {
     System::System(Hashes&& hashes) : _hashes(std::move(hashes)) {
     }
 
-    void System::Run(const Engine& ecsEngine) {
+    void System::Run(Engine& ecsEngine, float delta) {
         for(const auto* instance : ecsEngine.CollectInstances(_hashes)) {
-            for(const auto& component : instance->GenerateCollector(_hashes)) {
-                ForEach(component);
+            for(const auto& collector : instance->GenerateCollector(_hashes)) {
+                ForEach(collector, delta);
             }
         }
     }

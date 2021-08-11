@@ -11,6 +11,10 @@ namespace ECS {
         _handler.Free(_index);
     }
 
+    BodyRefs Entity::Get() const {
+        return std::move(_handler.Get(_index));
+    }
+
     Instance::Instance(TypeInfo&& typeInfo)
         : _typeInfo(std::move(typeInfo))
         , _packCount(static_cast<Size>(ChunkSizeToByte / _typeInfo.GetTotalSize())) {
@@ -45,7 +49,7 @@ namespace ECS {
 
             for (auto& collector = result.back();
                 const auto hash : hashes) {
-                collector.bodyRefArray.emplace_back(handler->Get(hash));
+                collector.refs.emplace_back(handler->Get(hash));
             }
         }
         return result;
@@ -85,6 +89,7 @@ namespace ECS {
         }
 
         _bodyHandlers.emplace_back(new BodyHandler{ _packCount, _typeInfo.GetTypes() });
+        _currentHandler = _bodyHandlers.back();
     }
 
     void Engine::RegistryTypeInformation(HashSizePairs&& types) {
@@ -108,7 +113,7 @@ namespace ECS {
         return result;
     }
 
-    Entity* Engine::CreateEntity(Hashes&& hashes) {
+    Entity* Engine::CreateEntity(const Hashes& hashes) {
         for (auto& instance : _instances) {
             if (const auto* handler = instance.FindHandler(hashes);
                 nullptr != handler) {

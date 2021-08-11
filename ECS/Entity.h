@@ -17,15 +17,16 @@ namespace ECS {
         Entity& operator=(const Entity&) = delete;
         Entity& operator=(Entity&&)      = delete;
 
+        BodyRefs           Get() const;
+
     private:
         const BodyHandler& _handler;
         const BodyIndex    _index = InvalidBodyIndex;
     };
 
-    using BodyRefArray     = std::vector<BodyRef>;
     struct Collector {
-        Size         count = 0;
-        BodyRefArray bodyRefArray;
+        Size     count = 0;
+        BodyRefs refs;
     };
 
     using BodyHandlerOwner  = gsl::owner<BodyHandler*>;
@@ -77,8 +78,9 @@ namespace ECS {
         void                            RegistryTypeInformation(HashSizePairs&& types);
         [[nodiscard]] ConstInstanceRefs CollectInstances(const Hashes& hashes) const;
 
-        Entity*                         CreateEntity(Hashes&& hashes);
+        Entity*                         CreateEntity(const Hashes& hashes);
         void                            DestroyEntity(gsl::not_null<Entity*>&& entity);
+        [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _entities.size(); }
 
     private:
         Instances                       _instances;

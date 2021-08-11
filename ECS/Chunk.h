@@ -52,4 +52,20 @@ namespace Chunk {
         mutable Body                _body;
         mutable Size                _allocCount = 0;
     };
+
+    template<typename T1>
+    T1* Accept(const BodyRefs& refs) {
+        return reinterpret_cast<T1*>(refs[0]);
+    }
+
+    template<typename T1, typename T2, typename T3, typename T4, typename T5>
+    std::tuple<T1*, T2*, T3*, T4*, T5*> Accept(const BodyRefs& refs) {
+        return {
+            reinterpret_cast<T1*>(refs[0]),
+            reinterpret_cast<T2*>(refs[1]),
+            reinterpret_cast<T3*>(refs[2]),
+            reinterpret_cast<T4*>(refs[3]),
+            reinterpret_cast<T5*>(refs[4]),
+        };
+    }
 }
