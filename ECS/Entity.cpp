@@ -15,6 +15,10 @@ namespace ECS {
         return std::move(_handler.Get(_index, hashes));
     }
 
+    void Entity::ChangeIndex(BodyIndex index) {
+        _index = index;
+    }
+
     Instance::Instance(TypeInfo&& typeInfo)
         : _typeInfo(std::move(typeInfo))
         , _packCount(static_cast<Size>(ChunkSizeToByte / _typeInfo.GetTotalSize())) {
@@ -92,6 +96,17 @@ namespace ECS {
         _currentHandler = _bodyHandlers.back();
     }
 
+    Engine::~Engine() {
+        for(const auto& entities : std::views::values(_entityPool)) {
+            for(const auto* entity : entities) {
+                if(nullptr == entity) {
+                    break;
+                }
+                delete entity;
+            }
+        }
+    }
+
     void Engine::RegistryTypeInformation(HashSizePairs&& types) {
         const auto hashes = std::views::keys(types);
         for (auto& instance : _instances) {
@@ -117,33 +132,34 @@ namespace ECS {
         for (auto& instance : _instances) {
             if (const auto* handler = instance.FindHandler(hashes);
                 nullptr != handler) {
-                _entities.emplace_back(new Entity{ *handler });
-                return _entities.back();
+                auto& entities = _entityPool[handler];
+                if(entities.size() < handler->GetPackCount()) {
+                    entities.resize(handler->GetPackCount());
+                }
+
+                ++_numEntities;
+                auto* entity = new Entity{ *handler };
+                entities[handler->GetAllocCount() - 1] = entity;
+                return entity;
             }
         }
 
         return nullptr;
     }
 
-    void Engine::DestroyEntity(gsl::not_null<const Entity*>&& entity) {
-        const auto findIterator = std::ranges::find(_entities, const_cast<Entity*>(entity.get()));
-        if (_entities.end() == findIterator) {
-            return;
-        }
-
-        delete entity.get();
-        _entities.erase(findIterator);
-    }
-
     void Engine::DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index) {
-        const auto findIterator = std::ranges::find_if(_entities, [&handler, index](const auto* entity)->bool {
-            return entity->Is(handler.get(), index);
-        });
-        if(_entities.end() == findIterator) {
+        --_numEntities;
+
+        auto& entities = _entityPool[handler.get()];
+        delete entities[index];
+
+        auto* lastEntity = entities[handler->GetAllocCount()];
+        if(nullptr == lastEntity) {
             return;
         }
 
-        delete *findIterator;
-        _entities.erase(findIterator);
+        lastEntity->ChangeIndex(index);
+        entities[index] = lastEntity;
+        entities[handler->GetAllocCount()] = nullptr;
     }
 }

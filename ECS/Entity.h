@@ -8,6 +8,8 @@ namespace ECS {
     using namespace Chunk;
 
     class Entity {
+        friend class Engine;
+
     public:
         explicit Entity(const BodyHandler& handler);
         ~Entity();
@@ -17,18 +19,13 @@ namespace ECS {
         Entity& operator=(const Entity&) = delete;
         Entity& operator=(Entity&&)      = delete;
 
-        [[nodiscard]] constexpr bool Is(const BodyHandler* handler) const noexcept {
-            return &_handler == handler;
-        }
-        [[nodiscard]] constexpr bool Is(const BodyHandler* handler, BodyIndex index) const noexcept {
-            return &_handler == handler && _index == index;
-        }
-
         [[nodiscard]] BodyRefs       Get(const Hashes& hashes) const;
 
     private:
+        void                         ChangeIndex(BodyIndex index);
+
         const BodyHandler&           _handler;
-        const BodyIndex              _index = InvalidBodyIndex;
+        BodyIndex                    _index = InvalidBodyIndex;
     };
 
     struct Collector {
@@ -72,12 +69,12 @@ namespace ECS {
     using Instances         = std::vector<Instance>;
     using ConstInstanceRefs = std::vector<const Instance*>;
     using OwnerEntity       = gsl::owner<Entity*>;
-    using OwnerEntities     = std::vector<OwnerEntity>;
+    using EntityPool        = std::unordered_map<const BodyHandler*, std::vector<OwnerEntity>>;
 
     class Engine {
     public:
         Engine()                         = default;
-        ~Engine()                        = default;
+        ~Engine();
         Engine(const Engine&)            = delete;
         Engine(Engine&&)                 = delete;
         Engine& operator=(const Engine&) = delete;
@@ -87,13 +84,13 @@ namespace ECS {
         [[nodiscard]] ConstInstanceRefs CollectInstances(const Hashes& hashes) const;
 
         Entity*                         CreateEntity(const Hashes& hashes);
-        void                            DestroyEntity(gsl::not_null<const Entity*>&& entity);
         void                            DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index);
 
-        [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _entities.size(); }
+        [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _numEntities; }
 
     private:
         Instances                       _instances;
-        OwnerEntities                   _entities;
+        EntityPool                      _entityPool;
+        size_t                          _numEntities = 0;
     };
 }

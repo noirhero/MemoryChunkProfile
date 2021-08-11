@@ -38,6 +38,7 @@ namespace Chunk {
         [[nodiscard]] constexpr bool IsFull() const noexcept { return _packCount == _allocCount; }
         [[nodiscard]] constexpr bool IsEmpty() const noexcept { return 0 == _allocCount; }
         [[nodiscard]] constexpr Size GetAllocCount() const noexcept { return _allocCount; }
+        [[nodiscard]] constexpr Size GetPackCount() const noexcept { return _packCount; }
 
         BodyIndex                    Allocate() const;
         void                         Free(BodyIndex index) const;
