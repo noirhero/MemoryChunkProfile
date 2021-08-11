@@ -11,8 +11,8 @@ namespace ECS {
         _handler.Free(_index);
     }
 
-    BodyRefs Entity::Get() const {
-        return std::move(_handler.Get(_index));
+    BodyRefs Entity::Get(const Hashes& hashes) const {
+        return std::move(_handler.Get(_index, hashes));
     }
 
     Instance::Instance(TypeInfo&& typeInfo)
@@ -45,7 +45,7 @@ namespace ECS {
     Collectors Instance::GenerateCollector(const Hashes& hashes) const {
         Collectors result;
         for (const auto* handler : _bodyHandlers) {
-            result.emplace_back(handler->GetAllocCount());
+            result.emplace_back(handler, handler->GetAllocCount());
 
             for (auto& collector = result.back();
                 const auto hash : hashes) {
@@ -125,13 +125,25 @@ namespace ECS {
         return nullptr;
     }
 
-    void Engine::DestroyEntity(gsl::not_null<Entity*>&& entity) {
-        const auto findIterator = std::ranges::find(_entities, entity.get());
-        if (_entities.empty()) {
+    void Engine::DestroyEntity(gsl::not_null<const Entity*>&& entity) {
+        const auto findIterator = std::ranges::find(_entities, const_cast<Entity*>(entity.get()));
+        if (_entities.end() == findIterator) {
             return;
         }
 
         delete entity.get();
+        _entities.erase(findIterator);
+    }
+
+    void Engine::DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index) {
+        const auto findIterator = std::ranges::find_if(_entities, [&handler, index](const auto* entity)->bool {
+            return entity->Is(handler.get(), index);
+        });
+        if(_entities.end() == findIterator) {
+            return;
+        }
+
+        delete *findIterator;
         _entities.erase(findIterator);
     }
 }

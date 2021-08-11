@@ -42,7 +42,7 @@ namespace Chunk {
         BodyIndex                    Allocate() const;
         void                         Free(BodyIndex index) const;
 
-        BodyRefs                     Get(BodyIndex index) const;
+        BodyRefs                     Get(BodyIndex index, const Hashes& hashes) const;
         BodyRef                      Get(Hash findHash) const;
 
     private:

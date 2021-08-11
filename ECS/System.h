@@ -22,8 +22,13 @@ namespace ECS {
 
         Hashes       _hashes;
 
+        template<typename T1>
+        __inline T1*                            Accept(const Collector& collector) const noexcept {
+            return reinterpret_cast<T1*>(collector.refs[0]);
+        }
+
         template<typename T1, typename T2, typename T3, typename T4>
-        static std::tuple<T1*, T2*, T3*, T4*> Accept(const Collector& collector) {
+        __inline std::tuple<T1*, T2*, T3*, T4*> Accept(const Collector& collector) const noexcept {
             return {
                 reinterpret_cast<T1*>(collector.refs[0]),
                 reinterpret_cast<T2*>(collector.refs[1]),

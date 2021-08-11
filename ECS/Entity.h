@@ -17,16 +17,24 @@ namespace ECS {
         Entity& operator=(const Entity&) = delete;
         Entity& operator=(Entity&&)      = delete;
 
-        BodyRefs           Get() const;
+        [[nodiscard]] constexpr bool Is(const BodyHandler* handler) const noexcept {
+            return &_handler == handler;
+        }
+        [[nodiscard]] constexpr bool Is(const BodyHandler* handler, BodyIndex index) const noexcept {
+            return &_handler == handler && _index == index;
+        }
+
+        [[nodiscard]] BodyRefs       Get(const Hashes& hashes) const;
 
     private:
-        const BodyHandler& _handler;
-        const BodyIndex    _index = InvalidBodyIndex;
+        const BodyHandler&           _handler;
+        const BodyIndex              _index = InvalidBodyIndex;
     };
 
     struct Collector {
-        Size     count = 0;
-        BodyRefs refs;
+        const BodyHandler* handler = nullptr;
+        const Size         count = 0;
+        BodyRefs           refs;
     };
 
     using BodyHandlerOwner  = gsl::owner<BodyHandler*>;
@@ -79,7 +87,9 @@ namespace ECS {
         [[nodiscard]] ConstInstanceRefs CollectInstances(const Hashes& hashes) const;
 
         Entity*                         CreateEntity(const Hashes& hashes);
-        void                            DestroyEntity(gsl::not_null<Entity*>&& entity);
+        void                            DestroyEntity(gsl::not_null<const Entity*>&& entity);
+        void                            DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index);
+
         [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _entities.size(); }
 
     private:
