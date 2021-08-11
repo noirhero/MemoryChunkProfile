@@ -5,6 +5,7 @@
 #include <conio.h>
 
 #include <map>
+#include <unordered_set>
 #include <unordered_map>
 #include <ranges>
 #include <iostream>

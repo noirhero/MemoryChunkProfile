@@ -31,7 +31,7 @@ namespace {
 
         std::map<uint64_t, Component*> components;
     };
-    using Entities = std::vector<Entity*>;
+    using Entities = std::unordered_set<Entity*>;
 
     class System {
     public:
@@ -99,35 +99,32 @@ namespace {
 
     class CreateEntitySystem final : public System {
     public:
-        explicit CreateEntitySystem(Entities& entities, size_t maxCount) : System(entities), _maxCount(maxCount) {
-            for (std::remove_const<decltype(_maxCount)>::type i = 0; i < _maxCount; ++i) {
-                _entities.emplace_back(new Entity);
-                auto* entity = _entities.back();
-                entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
-                entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
-                entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
-                entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
-                entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ static_cast<float>(Util::Random::Get(1, 10)) });
-            }
+        explicit CreateEntitySystem(Entities& entities, size_t maxCount, float minLifeSeconds, float maxLifeSeconds)
+            : System(entities)
+            , _maxCount(maxCount), _minLifeSeconds(minLifeSeconds), _maxLifeSeconds(maxLifeSeconds) {
         }
 
         void ForEach(float, Entity&) override {}
         void Run(float delta) override {
-            if (_entities.size() >= _maxCount) {
-                return;
-            }
-
-            _entities.emplace_back(new Entity);
-            auto* entity = _entities.back();
-            entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
-            entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
-            entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
-            entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
-            entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ static_cast<float>(Util::Random::Get(1, 10)) });
+            CreateEntities();
         }
 
     private:
+        void CreateEntities() const {
+            for(auto i = static_cast<decltype(_maxCount)>(_entities.size()); i < _maxCount; ++i) {
+                auto* entity = new Entity;
+                entity->components.try_emplace(typeid(ScaleComponent).hash_code(), new ScaleComponent);
+                entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
+                entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
+                entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
+                entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ Util::Random::Distribution(1.0f, 10.0f) });
+                _entities.emplace(entity);
+            }
+        }
+
         const size_t _maxCount;
+        const float  _minLifeSeconds;
+        const float  _maxLifeSeconds;
     };
 
     class DestroyEntitySystem final : public System {
@@ -147,21 +144,16 @@ namespace {
             System::Run(delta);
 
             if (false == _destroyEntities.empty()) {
-                const auto removeRange = std::ranges::remove_if(_entities, [this](const auto* eachEntity)->bool {
-                    return std::ranges::any_of(_destroyEntities, [eachEntity](const auto* destroyEntity)->bool {
-                        return destroyEntity == eachEntity;
-                    });
-                });
-                for (const auto* entity : _destroyEntities) {
+                for(auto* entity : _destroyEntities) {
+                    _entities.erase(entity);
                     delete entity;
                 }
-                _entities.erase(removeRange.begin(), removeRange.end());
                 _destroyEntities.clear();
             }
         }
 
     private:
-        Entities _destroyEntities;
+        std::vector<Entity*> _destroyEntities;
     };
 
     class RotationSystem final : public System {
@@ -202,7 +194,7 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(entities, timer, 1.0f);
-            CreateEntitySystem createSystem(entities, 100000);
+            CreateEntitySystem createSystem(entities, 100000, 1.0f, 10.0f);
             DestroyEntitySystem destroySystem(entities);
             RotationSystem rotateSystem(entities);
             TransformSystem transformSystem(entities);
@@ -213,7 +205,7 @@ namespace Scenario {
 
                 printScreenSystem.Run(timer.Delta());
                 createSystem.Run(timer.Delta());
-                //destroySystem.Run(timer.Delta());
+                destroySystem.Run(timer.Delta());
                 rotateSystem.Run(timer.Delta());
                 transformSystem.Run(timer.Delta());
             }

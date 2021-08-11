@@ -79,8 +79,19 @@ namespace {
 
     class CreateEntitySystem final : public ECS::System {
     public:
-        explicit CreateEntitySystem(ECS::Engine& ecsEngine, uint32_t maxCount) : ECS::System(ArchType::GetHashes()), _maxCount(maxCount) {
-            for (std::remove_const<decltype(_maxCount)>::type i = 0; i < _maxCount; ++i) {
+        explicit CreateEntitySystem(ECS::Engine& ecsEngine, uint32_t maxCount, float minLifeSeconds, float maxLifeSeconds)
+            : ECS::System(ArchType::GetHashes())
+            , _maxCount(maxCount), _minLifeSeconds(minLifeSeconds), _maxLifeSeconds(maxLifeSeconds) {
+        }
+
+        void Run(ECS::Engine& ecsEngine, float delta) override {
+            CreateEntities(ecsEngine);
+        }
+
+    protected:
+        void           ForEach(const ECS::Collector& collector, float delta) override {}
+        void           CreateEntities(ECS::Engine& ecsEngine) const {
+            for (auto i = static_cast<decltype(_maxCount)>(ecsEngine.GetNumTotalEntity()); i < _maxCount; ++i) {
                 const auto& [scale, rotation, translation, transform, lifeCycle] =
                     Chunk::Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent, LifeCycleComponent>(ecsEngine.CreateEntity(_hashes)->Get(_hashes));
 
@@ -88,30 +99,14 @@ namespace {
                 rotation->value = Math::Quat::Identity;
                 translation->value = Math::Vec3::Zero;
                 transform->value = Math::Mat4::Identity;
-                lifeCycle->value = Util::Random::Distribution(5.0f, 10.0f);
+                lifeCycle->value = Util::Random::Distribution(_minLifeSeconds, _maxLifeSeconds);
             }
         }
-
-        void Run(ECS::Engine& ecsEngine, float delta) override {
-            if(_maxCount <= ecsEngine.GetNumTotalEntity()) {
-                return;
-            }
-
-            const auto& [scale, rotation, translation, transform, lifeCycle] =
-                Chunk::Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent, LifeCycleComponent>(ecsEngine.CreateEntity(_hashes)->Get(_hashes));
-
-            scale->value       = Math::Vec3::One;
-            rotation->value    = Math::Quat::Identity;
-            translation->value = Math::Vec3::Zero;
-            transform->value   = Math::Mat4::Identity;
-            lifeCycle->value   = Util::Random::Distribution(5.0f, 10.0f);
-        }
-
-    protected:
-        void           ForEach(const ECS::Collector& collector, float delta) override {}
 
     private:
         const uint32_t _maxCount;
+        const float    _minLifeSeconds;
+        const float    _maxLifeSeconds;
     };
 
     class DestroyEntitySystem final : public ECS::System {
@@ -180,7 +175,7 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(timer, 1.0f);
-            CreateEntitySystem createSystem(ecsEngine, 100000);
+            CreateEntitySystem createSystem(ecsEngine, 100000, 1.0f, 10.0f);
             DestroyEntitySystem destroySystem(ecsEngine);
             RotationSystem rotationSystem;
             TransformSystem transformSystem;
@@ -191,7 +186,7 @@ namespace Scenario {
 
                 printScreenSystem.Run(ecsEngine, timer.Delta());
                 createSystem.Run(ecsEngine, timer.Delta());
-                //destroySystem.Run(ecsEngine, timer.Delta());
+                destroySystem.Run(ecsEngine, timer.Delta());
                 rotationSystem.Run(ecsEngine, timer.Delta());
                 transformSystem.Run(ecsEngine, timer.Delta());
             }
