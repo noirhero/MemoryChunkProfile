@@ -8,22 +8,22 @@ namespace ECS {
     class System {
     public:
         System(Hashes&& hashes);
-        virtual ~System() = default;
 
         System(const System&)            = default;
         System(System&&)                 = default;
+        virtual ~System()                = default;
         System& operator=(const System&) = default;
         System& operator=(System&&)      = default;
 
         virtual void Run(Engine& ecsEngine, float delta);
 
     protected:
-        virtual void ForEach(const Collector& collector, float delta) = 0;
+        virtual void ForEach(const Collector& collector, float delta) {};
 
         Hashes       _hashes;
 
         template<typename T1>
-        __inline T1*                            Accept(const Collector& collector) const noexcept {
+        __inline T1* Accept(const Collector& collector) const noexcept {
             return reinterpret_cast<T1*>(collector.refs[0]);
         }
 

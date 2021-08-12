@@ -16,19 +16,19 @@ namespace Chunk {
     public:
         explicit TypeInfo(HashSizePairs&& types);
 
-        [[nodiscard]] bool         IsHas(Hash hash) const noexcept;
-        [[nodiscard]] const Types& GetTypes() const noexcept { return _types; }
-        [[nodiscard]] Size         GetTotalSize() const noexcept { return _totalSize; }
+        [[nodiscard]] bool                   IsHas(Hash hash) const noexcept;
+        [[nodiscard]] constexpr const Types& GetTypes() const noexcept { return _types; }
+        [[nodiscard]] constexpr Size         GetTotalSize() const noexcept { return _totalSize; }
 
     private:
-        Size                       _totalSize = 0;
-        Types                      _types;
+        Size                                 _totalSize = 0;
+        Types                                _types;
     };
 
-    using     HashBySizeOffsetMap        = std::map<Hash, std::pair<Size, Size>>;
-    using     BodyRef                    = uint8_t*;
-    using     BodyRefs                   = std::vector<BodyRef>;
-    using     BodyIndex                  = Size;
+    using     HashBySizeOffsetMap = std::map<Hash, std::pair<Size, Size>>;
+    using     BodyRef = uint8_t*;
+    using     BodyRefs = std::vector<BodyRef>;
+    using     BodyIndex = Size;
     constexpr BodyIndex InvalidBodyIndex = -1;
 
     class BodyHandler {
@@ -44,7 +44,7 @@ namespace Chunk {
         void                         Free(BodyIndex index) const;
 
         BodyRefs                     Get(BodyIndex index, const Hashes& hashes) const;
-        BodyRef                      Get(Hash findHash) const;
+        BodyRef                      Get(Hash hash) const;
 
     private:
         const Size                  _packCount = 0;

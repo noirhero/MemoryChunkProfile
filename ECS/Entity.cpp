@@ -4,13 +4,6 @@
 #include "Entity.h"
 
 namespace ECS {
-    Entity::Entity(const BodyHandler& handler) : _handler(handler), _index(handler.Allocate()) {
-    }
-
-    Entity::~Entity() {
-        _handler.Free(_index);
-    }
-
     BodyRefs Entity::Get(const Hashes& hashes) const {
         return std::move(_handler.Get(_index, hashes));
     }
@@ -96,6 +89,13 @@ namespace ECS {
         _currentHandler = _bodyHandlers.back();
     }
 
+    Entity::Entity(const BodyHandler& handler) : _handler(handler), _index(handler.Allocate()) {
+    }
+
+    Entity::~Entity() {
+        _handler.Free(_index);
+    }
+
     Engine::~Engine() {
         for(const auto& entities : std::views::values(_entityPool)) {
             for(const auto* entity : entities) {
@@ -145,6 +145,10 @@ namespace ECS {
         }
 
         return nullptr;
+    }
+
+    void Engine::DestroyEntity(gsl::not_null<Entity*>&& entity) {
+        DestroyEntity(&entity->_handler, entity->_index);
     }
 
     void Engine::DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index) {

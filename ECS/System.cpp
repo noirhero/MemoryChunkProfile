@@ -8,8 +8,8 @@ namespace ECS {
     }
 
     void System::Run(Engine& ecsEngine, float delta) {
-        for(const auto* instance : ecsEngine.CollectInstances(_hashes)) {
-            for(const auto& collector : instance->GenerateCollector(_hashes)) {
+        for (const auto* instance : ecsEngine.CollectInstances(_hashes)) {
+            for (const auto& collector : instance->GenerateCollector(_hashes)) {
                 ForEach(collector, delta);
             }
         }

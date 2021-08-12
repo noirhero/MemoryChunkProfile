@@ -7,46 +7,25 @@
 namespace ECS {
     using namespace Chunk;
 
-    class Entity {
-        friend class Engine;
-
-    public:
-        explicit Entity(const BodyHandler& handler);
-        ~Entity();
-
-        Entity(const Entity&)            = delete;
-        Entity(Entity&&)                 = delete;
-        Entity& operator=(const Entity&) = delete;
-        Entity& operator=(Entity&&)      = delete;
-
-        [[nodiscard]] BodyRefs       Get(const Hashes& hashes) const;
-
-    private:
-        void                         ChangeIndex(BodyIndex index);
-
-        const BodyHandler&           _handler;
-        BodyIndex                    _index = InvalidBodyIndex;
-    };
-
     struct Collector {
         const BodyHandler* handler = nullptr;
         const Size         count = 0;
         BodyRefs           refs;
     };
 
+    using Collectors        = std::vector<Collector>;
     using BodyHandlerOwner  = gsl::owner<BodyHandler*>;
     using BodyHandlerOwners = std::vector<BodyHandlerOwner>;
-    using Collectors        = std::vector<Collector>;
 
     class Instance {
     public:
         explicit Instance(TypeInfo&& typeInfo);
         ~Instance();
 
-        Instance(const Instance&)            = default;
-        Instance(Instance&&)                 = default;
+        Instance(const Instance&) = default;
+        Instance(Instance&&) = default;
         Instance& operator=(const Instance&) = delete;
-        Instance& operator=(Instance&&)      = delete;
+        Instance& operator=(Instance&&) = delete;
 
         [[nodiscard]] bool               IsType(const HashSizePairsKeys& hashes) const;
         [[nodiscard]] bool               IsType(const Hashes& hashes) const;
@@ -66,6 +45,28 @@ namespace ECS {
         BodyHandlerOwners                _bodyHandlers;
     };
 
+    class Entity {
+    private:
+        friend class Engine;
+
+        explicit Entity(const BodyHandler& handler);
+        ~Entity();
+
+    public:
+        Entity(const Entity&)            = delete;
+        Entity(Entity&&)                 = delete;
+        Entity& operator=(const Entity&) = delete;
+        Entity& operator=(Entity&&)      = delete;
+
+        [[nodiscard]] BodyRefs       Get(const Hashes& hashes) const;
+
+    private:
+        void                         ChangeIndex(BodyIndex index);
+
+        const BodyHandler&           _handler;
+        BodyIndex                    _index = InvalidBodyIndex;
+    };
+
     using Instances         = std::vector<Instance>;
     using ConstInstanceRefs = std::vector<const Instance*>;
     using OwnerEntity       = gsl::owner<Entity*>;
@@ -73,17 +74,18 @@ namespace ECS {
 
     class Engine {
     public:
-        Engine()                         = default;
+        Engine() = default;
         ~Engine();
-        Engine(const Engine&)            = delete;
-        Engine(Engine&&)                 = delete;
+        Engine(const Engine&) = delete;
+        Engine(Engine&&) = delete;
         Engine& operator=(const Engine&) = delete;
-        Engine& operator=(Engine&&)      = delete;
+        Engine& operator=(Engine&&) = delete;
 
         void                            RegistryTypeInformation(HashSizePairs&& types);
         [[nodiscard]] ConstInstanceRefs CollectInstances(const Hashes& hashes) const;
 
         Entity*                         CreateEntity(const Hashes& hashes);
+        void                            DestroyEntity(gsl::not_null<Entity*>&& entity);
         void                            DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index);
 
         [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _numEntities; }

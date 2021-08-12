@@ -12,9 +12,9 @@ namespace Chunk {
     }
 
     bool TypeInfo::IsHas(Hash hash) const noexcept {
-        return std::ranges::any_of(_types, [hash](const auto eachType)->bool {
+        return std::ranges::any_of(_types, [hash](const auto& eachType)->bool {
             return eachType.hash == hash;
-            });
+        });
     }
 
     BodyHandler::BodyHandler(Size packCount, const Types& types) : _packCount(packCount) {
@@ -42,23 +42,24 @@ namespace Chunk {
         }
 
         for (const auto& [size, offset] : std::views::values(_types)) {
-            const auto& src = _body.memory[offset * _packCount + size * _allocCount];
-            auto& dest = _body.memory[offset * _packCount + size * index];
+            const auto start = offset * _packCount;
+            const auto& src = _body.memory[start + size * _allocCount];
+            auto& dest = _body.memory[start + size * index];
             memcpy_s(&dest, size, &src, size);
         }
     }
 
     BodyRefs BodyHandler::Get(BodyIndex index, const Hashes& hashes) const {
         BodyRefs result;
-        for(const auto hash : hashes) {
+        for (const auto hash : hashes) {
             const auto& [size, offset] = _types[hash];
             result.emplace_back(&_body.memory[offset * _packCount + size * index]);
         }
         return result;
     }
 
-    BodyRef BodyHandler::Get(Hash findHash) const {
-        const auto& [size, offset] = _types[findHash];
+    BodyRef BodyHandler::Get(Hash hash) const {
+        const auto& [size, offset] = _types[hash];
         return &_body.memory[offset * _packCount];
     }
 }
