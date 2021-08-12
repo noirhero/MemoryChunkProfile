@@ -18,8 +18,8 @@ namespace {
     struct TransformComponent : public Component {
         glm::mat4 value = Math::Mat4::Identity;
     };
-    struct LifeCycleComponent : public Component {
-        explicit LifeCycleComponent(float initValue) : value(initValue) {}
+    struct LifeComponent : public Component {
+        explicit LifeComponent(float initValue) : value(initValue) {}
         float value = 0.0f;
     };
     struct Entity {
@@ -37,9 +37,9 @@ namespace {
     public:
         explicit System(Entities& entities) : _entities(entities) {
         }
+        virtual ~System() = default;
 
         virtual void ForEach(float delta, Entity& entity) = 0;
-
         virtual void Run(float delta) {
             for (auto* entity : _entities) {
                 if (std::ranges::any_of(_hashes, [entity](const auto eachHash)->bool {
@@ -54,21 +54,20 @@ namespace {
 
     protected:
         template<typename T>
-        T* Accept(Entity& entity) const {
+        __inline T* Accept(Entity& entity) const noexcept {
             return reinterpret_cast<T*>(entity.components[typeid(T).hash_code()]);
         }
 
-        Entities& _entities;
+        Entities&             _entities;
         std::vector<uint64_t> _hashes;
     };
 
     class PrintScreenSystem final : public System {
     public:
-        PrintScreenSystem(Entities& entities, const Util::Timer& timer, float intervalTime) : System(entities), _timer(timer), _interval(intervalTime) {
+        explicit PrintScreenSystem(Entities& entities, const Util::Timer& timer, float intervalTime) : System(entities), _timer(timer), _interval(intervalTime) {
         }
-        ~PrintScreenSystem() {
+        ~PrintScreenSystem() override {
             Print();
-            fmt::print("Ratio FPS          : {}\n", _ratioFrame);
         }
 
         void ForEach(float delta, Entity& entity) override {}
@@ -76,19 +75,19 @@ namespace {
             _checkTime -= delta;
             if (0.0f >= _checkTime) {
                 _checkTime = _interval;
+                _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
                 Print();
             }
         }
 
     private:
-        void               Print() {
+        void Print() {
             system("cls");
 
             fmt::print("Total entity count : {}\n", _entities.size());
             fmt::print("Total time         : {}\n", _timer.Total());
             fmt::print("FPS                : {}\n", _timer.Frame());
-
-            _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
+            fmt::print("Ratio FPS          : {}\n", _ratioFrame);
         }
 
         const Util::Timer& _timer;
@@ -117,7 +116,7 @@ namespace {
                 entity->components.try_emplace(typeid(RotationComponent).hash_code(), new RotationComponent);
                 entity->components.try_emplace(typeid(TranslateComponent).hash_code(), new TranslateComponent);
                 entity->components.try_emplace(typeid(TransformComponent).hash_code(), new TransformComponent);
-                entity->components.try_emplace(typeid(LifeCycleComponent).hash_code(), new LifeCycleComponent{ Util::Random::Distribution(1.0f, 10.0f) });
+                entity->components.try_emplace(typeid(LifeComponent).hash_code(), new LifeComponent{ Util::Random::Distribution(_minLifeSeconds, _maxLifeSeconds) });
                 _entities.emplace(entity);
             }
         }
@@ -129,12 +128,12 @@ namespace {
 
     class DestroyEntitySystem final : public System {
     public:
-        DestroyEntitySystem(Entities& entities) : System(entities) {
-            _hashes.emplace_back(typeid(LifeCycleComponent).hash_code());
+        explicit DestroyEntitySystem(Entities& entities) : System(entities) {
+            _hashes.emplace_back(typeid(LifeComponent).hash_code());
         }
 
         void ForEach(float delta, Entity& entity) override {
-            auto* lifeCycle = Accept<LifeCycleComponent>(entity);
+            auto* lifeCycle = Accept<LifeComponent>(entity);
             lifeCycle->value -= delta;
             if (0.0f >= lifeCycle->value) {
                 _destroyEntities.emplace_back(&entity);
@@ -158,7 +157,7 @@ namespace {
 
     class RotationSystem final : public System {
     public:
-        RotationSystem(Entities& entities) : System(entities) {
+        explicit RotationSystem(Entities& entities) : System(entities) {
             _hashes.emplace_back(typeid(RotationComponent).hash_code());
         }
 
@@ -170,7 +169,7 @@ namespace {
 
     class TransformSystem final : public System {
     public:
-        TransformSystem(Entities& entities) : System(entities) {
+        explicit TransformSystem(Entities& entities) : System(entities) {
             _hashes.emplace_back(typeid(ScaleComponent).hash_code());
             _hashes.emplace_back(typeid(RotationComponent).hash_code());
             _hashes.emplace_back(typeid(TranslateComponent).hash_code());
@@ -194,13 +193,12 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(entities, timer, 1.0f);
-            CreateEntitySystem createSystem(entities, 100000, 1.0f, 10.0f);
+            CreateEntitySystem createSystem(entities, NumEntities, 1.0f, 10.0f);
             DestroyEntitySystem destroySystem(entities);
             RotationSystem rotateSystem(entities);
             TransformSystem transformSystem(entities);
 
             while (60.0f >= timer.Total()) {
-                //std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 timer.Update();
 
                 printScreenSystem.Run(timer.Delta());

@@ -18,7 +18,7 @@ namespace {
     struct TransformComponent {
         glm::mat4 value;
     };
-    struct LifeCycleComponent {
+    struct LifeComponent {
         float value;
     };
 
@@ -29,7 +29,7 @@ namespace {
                 typeid(RotationComponent).hash_code(),
                 typeid(TranslateComponent).hash_code(),
                 typeid(TransformComponent).hash_code(),
-                typeid(LifeCycleComponent).hash_code(),
+                typeid(LifeComponent).hash_code(),
             };
         }
         [[nodiscard]] constexpr ECS::HashSizePairs GetHashSizePairs() noexcept {
@@ -38,17 +38,16 @@ namespace {
                 { typeid(RotationComponent).hash_code(), static_cast<ECS::Size>(sizeof(RotationComponent)) },
                 { typeid(TranslateComponent).hash_code(), static_cast<ECS::Size>(sizeof(TranslateComponent)) },
                 { typeid(TransformComponent).hash_code(), static_cast<ECS::Size>(sizeof(TransformComponent)) },
-                { typeid(LifeCycleComponent).hash_code(), static_cast<ECS::Size>(sizeof(LifeCycleComponent)) },
+                { typeid(LifeComponent).hash_code(), static_cast<ECS::Size>(sizeof(LifeComponent)) },
             };
         }
     };
 
     class PrintScreenSystem final : public ECS::System {
     public:
-        explicit PrintScreenSystem(const Util::Timer& timer, float interval) : ECS::System({}), _timer(timer), _interval(interval) {
-        }
-        ~PrintScreenSystem() override {
-            fmt::print("Ratio FPS          : {}\n", _ratioFrame);
+        explicit PrintScreenSystem(const Util::Timer& timer, float interval)
+            : ECS::System({})
+            , _timer(timer), _interval(interval) {
         }
 
         void Run(ECS::Engine& ecsEngine, float delta) override {
@@ -58,17 +57,15 @@ namespace {
             }
             _checkTime += _interval;
 
+            _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
+
             system("cls");
 
             fmt::print("Total entity count : {}\n", ecsEngine.GetNumTotalEntity());
             fmt::print("Total time         : {}\n", _timer.Total());
             fmt::print("FPS                : {}\n", _timer.Frame());
-
-            _ratioFrame = 0 == _ratioFrame ? _timer.Frame() : (_ratioFrame + _timer.Frame()) / 2;
+            fmt::print("Ratio FPS          : {}\n", _ratioFrame);
         }
-
-    protected:
-        void               ForEach(const ECS::Collector& collector, float delta) override {}
 
     private:
         const Util::Timer& _timer;
@@ -79,7 +76,7 @@ namespace {
 
     class CreateEntitySystem final : public ECS::System {
     public:
-        explicit CreateEntitySystem(ECS::Engine& ecsEngine, uint32_t maxCount, float minLifeSeconds, float maxLifeSeconds)
+        explicit CreateEntitySystem(uint32_t maxCount, float minLifeSeconds, float maxLifeSeconds)
             : ECS::System(ArchType::GetHashes())
             , _maxCount(maxCount), _minLifeSeconds(minLifeSeconds), _maxLifeSeconds(maxLifeSeconds) {
         }
@@ -89,11 +86,10 @@ namespace {
         }
 
     protected:
-        void           ForEach(const ECS::Collector& collector, float delta) override {}
-        void           CreateEntities(ECS::Engine& ecsEngine) const {
+        void CreateEntities(ECS::Engine& ecsEngine) const {
             for (auto i = static_cast<decltype(_maxCount)>(ecsEngine.GetNumTotalEntity()); i < _maxCount; ++i) {
                 const auto& [scale, rotation, translation, transform, lifeCycle] =
-                    Chunk::Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent, LifeCycleComponent>(ecsEngine.CreateEntity(_hashes)->Get(_hashes));
+                    Chunk::Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent, LifeComponent>(ecsEngine.CreateEntity(_hashes)->Get(_hashes));
 
                 scale->value = Math::Vec3::One;
                 rotation->value = Math::Quat::Identity;
@@ -111,14 +107,16 @@ namespace {
 
     class DestroyEntitySystem final : public ECS::System {
     public:
-        DestroyEntitySystem(ECS::Engine& ecsEngine) : ECS::System({ typeid(LifeCycleComponent).hash_code() }), _ecsEngine(ecsEngine) {
+        explicit DestroyEntitySystem(ECS::Engine& ecsEngine)
+            : ECS::System({ typeid(LifeComponent).hash_code() })
+            , _ecsEngine(ecsEngine) {
         }
 
     protected:
         void ForEach(const ECS::Collector& collector, float delta) override {
-            auto* lifeCycles = Accept<LifeCycleComponent>(collector);
+            auto* lifeCycles = Accept<LifeComponent>(collector);
 
-            for(std::remove_const<decltype(collector.count)>::type i = 0; i < collector.count; ++i) {
+            for(std::remove_const_t<decltype(collector.count)> i = 0; i < collector.count; ++i) {
                 lifeCycles[i].value -= delta;
                 if (0.0f >= lifeCycles[i].value) {
                     _ecsEngine.DestroyEntity(collector.handler, i);
@@ -137,7 +135,7 @@ namespace {
 
         void ForEach(const ECS::Collector& collector, float delta) override {
             auto* rotations = Accept<RotationComponent>(collector);
-            for(std::remove_const<decltype(collector.count)>::type i = 0; i < collector.count; ++i) {
+            for(std::remove_const_t<decltype(collector.count)> i = 0; i < collector.count; ++i) {
                 rotations[i].value = glm::rotate(rotations[i].value, delta, Math::Vec3::AxisY);
             }
         }
@@ -156,7 +154,8 @@ namespace {
         void ForEach(const ECS::Collector& collector, float delta) override {
             const auto& [scales, rotations, translations, transforms] = 
                 Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent>(collector);
-            for(std::remove_const<decltype(collector.count)>::type i = 0; i < collector.count; ++i) {
+
+            for(std::remove_const_t<decltype(collector.count)> i = 0; i < collector.count; ++i) {
                 const auto scaleTm = glm::scale(Math::Mat4::Identity, scales[i].value);
                 const auto rotationTm = glm::toMat4(rotations[i].value);
                 const auto posTm = glm::translate(Math::Mat4::Identity, translations[i].value);
@@ -175,13 +174,12 @@ namespace Scenario {
             Util::Timer timer;
 
             PrintScreenSystem printScreenSystem(timer, 1.0f);
-            CreateEntitySystem createSystem(ecsEngine, 100000, 1.0f, 10.0f);
+            CreateEntitySystem createSystem(NumEntities, 1.0f, 10.0f);
             DestroyEntitySystem destroySystem(ecsEngine);
             RotationSystem rotationSystem;
             TransformSystem transformSystem;
 
             while(60.0f > timer.Total()) {
-                //std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 timer.Update();
 
                 printScreenSystem.Run(ecsEngine, timer.Delta());

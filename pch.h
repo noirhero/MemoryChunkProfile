@@ -21,7 +21,6 @@
 #define GLM_FORCE_INLINE
 #define GLM_FORCE_EXPLICIT_CTOR
 #define GLM_FORCE_ALIGNED_GENTYPES
-//#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #define GLM_FORCE_INTRINSICS
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
@@ -40,4 +39,4 @@
 #include "Mathmatics.h"
 #include "Util.h"
 
-using namespace std::string_literals;
+constexpr uint32_t NumEntities = 50000;
