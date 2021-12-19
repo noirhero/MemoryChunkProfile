@@ -1,4 +1,4 @@
-// Copyright 2011-2021 GameParadiso, Inc. All Rights Reserved.
+// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -18,7 +18,7 @@ namespace ECS {
         virtual void Run(Engine& ecsEngine, float delta);
 
     protected:
-        virtual void ForEach(const Collector& collector, float delta) {};
+        virtual void ForEach(const Collector& /*collector*/, float /*delta*/) {};
 
         Hashes       _hashes;
 

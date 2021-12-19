@@ -1,4 +1,4 @@
-// Copyright 2011-2021 GameParadiso, Inc. All Rights Reserved.
+// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
 
 #include <pch.h>
 #include "Entity.h"

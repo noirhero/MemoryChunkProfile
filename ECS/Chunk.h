@@ -1,4 +1,4 @@
-// Copyright 2011-2021 GameParadiso, Inc. All Rights Reserved.
+// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -29,7 +29,7 @@ namespace Chunk {
     using     BodyRef = uint8_t*;
     using     BodyRefs = std::vector<BodyRef>;
     using     BodyIndex = Size;
-    constexpr BodyIndex InvalidBodyIndex = -1;
+    constexpr BodyIndex InvalidBodyIndex = std::numeric_limits<BodyIndex>::max();
 
     class BodyHandler {
     public:
