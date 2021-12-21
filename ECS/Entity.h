@@ -22,7 +22,7 @@ namespace ECS {
         explicit Instance(TypeInfo&& typeInfo);
         ~Instance();
 
-        Instance(const Instance&) = default;
+        Instance(const Instance&) = delete;
         Instance(Instance&&) = default;
         Instance& operator=(const Instance&) = delete;
         Instance& operator=(Instance&&) = delete;
@@ -59,6 +59,9 @@ namespace ECS {
         Entity& operator=(Entity&&)      = delete;
 
         [[nodiscard]] BodyRefs       Get(const Hashes& hashes) const;
+        [[nodiscard]] BodyIndex      GetIndex() const noexcept {
+            return _index;
+        }
 
     private:
         void                         ChangeIndex(BodyIndex index);
@@ -70,7 +73,8 @@ namespace ECS {
     using Instances         = std::vector<Instance>;
     using ConstInstanceRefs = std::vector<const Instance*>;
     using OwnerEntity       = gsl::owner<Entity*>;
-    using EntityPool        = std::unordered_map<const BodyHandler*, std::vector<OwnerEntity>>;
+    using OwnerEntities     = std::vector<OwnerEntity>;
+    using EntityPool        = std::unordered_map<const BodyHandler*, OwnerEntities>;
 
     class Engine {
     public:
@@ -81,18 +85,19 @@ namespace ECS {
         Engine& operator=(const Engine&) = delete;
         Engine& operator=(Engine&&) = delete;
 
-        void                            RegistryTypeInformation(HashSizePairs&& types);
-        [[nodiscard]] ConstInstanceRefs CollectInstances(const Hashes& hashes) const;
+        void                               RegistryTypeInformation(HashSizePairs&& types);
+        [[nodiscard]] ConstInstanceRefs    CollectInstances(const Hashes& hashes) const;
 
-        Entity*                         CreateEntity(const Hashes& hashes);
-        void                            DestroyEntity(gsl::not_null<Entity*>&& entity);
-        void                            DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index);
+        Entity*                            CreateEntity(const Hashes& hashes);
+        void                               DestroyEntity(gsl::not_null<Entity*>&& entity);
+        void                               DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index);
 
-        [[nodiscard]] constexpr size_t  GetNumTotalEntity() const noexcept { return _numEntities; }
+        [[nodiscard]] const OwnerEntities& CollectEntities(const Collector& collector);
+        [[nodiscard]] constexpr size_t     GetNumTotalEntity() const noexcept { return _numEntities; }
 
     private:
-        Instances                       _instances;
-        EntityPool                      _entityPool;
-        size_t                          _numEntities = 0;
+        Instances                          _instances;
+        EntityPool                         _entityPool;
+        size_t                             _numEntities = 0;
     };
 }

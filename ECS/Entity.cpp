@@ -156,6 +156,7 @@ namespace ECS {
 
         auto& entities = _entityPool[handler.get()];
         delete entities[index];
+        entities[index] = nullptr;
 
         auto* lastEntity = entities[handler->GetAllocCount()];
         if(nullptr == lastEntity) {
@@ -165,5 +166,9 @@ namespace ECS {
         lastEntity->ChangeIndex(index);
         entities[index] = lastEntity;
         entities[handler->GetAllocCount()] = nullptr;
+    }
+
+    const OwnerEntities& Engine::CollectEntities(const Collector& collector) {
+        return _entityPool[collector.handler];
     }
 }

@@ -15,10 +15,10 @@ namespace ECS {
         System& operator=(const System&) = default;
         System& operator=(System&&)      = default;
 
-        virtual void Run(Engine& ecsEngine, float delta);
+        virtual void Run(Engine& engine, float delta);
 
     protected:
-        virtual void ForEach(const Collector& /*collector*/, float /*delta*/) {};
+        virtual void ForEach(Engine& /*engine*/, const Collector& /*collector*/, float /*delta*/) {};
 
         Hashes       _hashes;
 
