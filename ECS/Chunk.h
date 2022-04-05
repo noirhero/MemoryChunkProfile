@@ -1,8 +1,8 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #pragma once
 
-#include "Type.h"
+#include <ECS/type.h>
 
 namespace Chunk {
     using namespace ECS;
@@ -12,9 +12,12 @@ namespace Chunk {
         uint8_t        memory[ChunkSizeToByte]{};
     };
 
+    //=================================================================================================================
+    // TypeInfo
+    //=================================================================================================================
     class TypeInfo {
     public:
-        explicit TypeInfo(HashSizePairs&& types);
+        explicit TypeInfo(const HashSizePairs& types);
 
         [[nodiscard]] bool                   IsHas(Hash hash) const noexcept;
         [[nodiscard]] constexpr const Types& GetTypes() const noexcept { return _types; }
@@ -25,10 +28,13 @@ namespace Chunk {
         Types                                _types;
     };
 
-    using     HashBySizeOffsetMap = std::map<Hash, std::pair<Size, Size>>;
-    using     BodyRef = uint8_t*;
-    using     BodyRefs = std::vector<BodyRef>;
-    using     BodyIndex = Size;
+    //=================================================================================================================
+    // BodyHandler
+    //=================================================================================================================
+    using     HashBySizeOffsetMap        = std::map<Hash, std::pair<Size, Size>>;
+    using     BodyRef                    = uint8_t*;
+    using     BodyRefs                   = std::vector<BodyRef>;
+    using     BodyIndex                  = Size;
     constexpr BodyIndex InvalidBodyIndex = std::numeric_limits<BodyIndex>::max();
 
     class BodyHandler {
@@ -44,7 +50,10 @@ namespace Chunk {
         void                         Free(BodyIndex index) const;
 
         BodyRefs                     Get(BodyIndex index, const Hashes& hashes) const;
+        BodyRef                      Get(BodyIndex index, Hash hash) const;
         BodyRef                      Get(Hash hash) const;
+
+        void                         Clear() const;
 
     private:
         const Size                  _packCount = 0;

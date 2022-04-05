@@ -113,7 +113,7 @@ namespace {
         }
 
     protected:
-        void ForEach(const ECS::Collector& collector, float delta) override {
+        void ForEach(ECS::Engine&, const ECS::Collector& collector, float delta) override {
             auto* lifeCycles = Accept<LifeComponent>(collector);
 
             for(std::remove_const_t<decltype(collector.count)> i = 0; i < collector.count; ++i) {
@@ -133,7 +133,7 @@ namespace {
         RotationSystem() : ECS::System({ typeid(RotationComponent).hash_code() }) {
         }
 
-        void ForEach(const ECS::Collector& collector, float delta) override {
+        void ForEach(ECS::Engine&, const ECS::Collector& collector, float delta) override {
             auto* rotations = Accept<RotationComponent>(collector);
             for(std::remove_const_t<decltype(collector.count)> i = 0; i < collector.count; ++i) {
                 rotations[i].value = glm::rotate(rotations[i].value, delta, Math::Vec3::AxisY);
@@ -151,7 +151,7 @@ namespace {
         }) {
         }
 
-        void ForEach(const ECS::Collector& collector, float delta) override {
+        void ForEach(ECS::Engine&, const ECS::Collector& collector, float delta) override {
             const auto& [scales, rotations, translations, transforms] = 
                 Accept<ScaleComponent, RotationComponent, TranslateComponent, TransformComponent>(collector);
 

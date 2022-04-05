@@ -1,4 +1,4 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #pragma once
 

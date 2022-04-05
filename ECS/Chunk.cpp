@@ -1,10 +1,13 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #include <pch.h>
-#include "Chunk.h"
+#include "chunk.h"
 
 namespace Chunk {
-    TypeInfo::TypeInfo(HashSizePairs&& types) {
+    //=================================================================================================================
+    // TypeInfo
+    //=================================================================================================================
+    TypeInfo::TypeInfo(const HashSizePairs& types) {
         for (const auto& [hash, size] : types) {
             _types.emplace_back(hash, size, _totalSize);
             _totalSize += size;
@@ -17,6 +20,9 @@ namespace Chunk {
         });
     }
 
+    //=================================================================================================================
+    // BodyHandler
+    //=================================================================================================================
     BodyHandler::BodyHandler(Size packCount, const Types& types) : _packCount(packCount) {
         for (const auto& [hash, size, offset] : types) {
             _types.try_emplace(hash, std::pair{ size, offset });
@@ -58,8 +64,17 @@ namespace Chunk {
         return result;
     }
 
+    BodyRef BodyHandler::Get(BodyIndex index, Hash hash) const {
+        const auto& [size, offset] = _types[hash];
+        return &_body.memory[offset * _packCount + size * index];
+    }
+
     BodyRef BodyHandler::Get(Hash hash) const {
         const auto& [size, offset] = _types[hash];
         return &_body.memory[offset * _packCount];
+    }
+
+    void BodyHandler::Clear() const {
+        _allocCount = 0;
     }
 }

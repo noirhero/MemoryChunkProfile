@@ -13,6 +13,8 @@
 #include <chrono>
 #include <random>
 #include <thread>
+#include <deque>
+#include <ranges>
 
 #define FMT_HEADER_ONLY
 #include <fmt/format.h>

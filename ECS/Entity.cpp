@@ -1,17 +1,12 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #include <pch.h>
-#include "Entity.h"
+#include "entity.h"
 
 namespace ECS {
-    BodyRefs Entity::Get(const Hashes& hashes) const {
-        return std::move(_handler.Get(_index, hashes));
-    }
-
-    void Entity::ChangeIndex(BodyIndex index) {
-        _index = index;
-    }
-
+    //=================================================================================================================
+    // Instance
+    //=================================================================================================================
     Instance::Instance(TypeInfo&& typeInfo)
         : _typeInfo(std::move(typeInfo))
         , _packCount(static_cast<Size>(ChunkSizeToByte / _typeInfo.GetTotalSize())) {
@@ -53,10 +48,8 @@ namespace ECS {
     }
 
     const BodyHandler* Instance::FindHandler(const Hashes& hashes) {
-        for (const auto hash : hashes) {
-            if (false == _typeInfo.IsHas(hash)) {
-                return nullptr;
-            }
+        if(false == IsType(hashes)) {
+            return nullptr;
         }
 
         RefreshCurrentHandler();
@@ -89,24 +82,97 @@ namespace ECS {
         _currentHandler = _bodyHandlers.back();
     }
 
-    Entity::Entity(const BodyHandler& handler) : _handler(handler), _index(handler.Allocate()) {
+    //=================================================================================================================
+    // Entity
+    //=================================================================================================================
+    Entity::Entity(const BodyHandler& handler, EntityPoolIndex poolIndex) : _handler(handler), _poolIndex(poolIndex), _index(handler.Allocate()) {
     }
 
     Entity::~Entity() {
         _handler.Free(_index);
     }
 
-    Engine::~Engine() {
-        for(const auto& entities : std::views::values(_entityPool)) {
-            for(const auto* entity : entities) {
-                if(nullptr == entity) {
-                    break;
-                }
-                delete entity;
-            }
+    BodyRef Entity::Get(const Hash hash) const {
+        return _handler.Get(_index, hash);
+    }
+
+    BodyRefs Entity::Get(const Hashes& hashes) const {
+        return _handler.Get(_index, hashes);
+    }
+
+    void Entity::ChangeIndex(BodyIndex index) {
+        _index = index;
+    }
+
+    //=================================================================================================================
+    // EntityPool
+    //=================================================================================================================
+    EntityPool::EntityPool(const BodyHandler& handler) : _handler(handler) {
+        ReservePool(static_cast<EntityPoolIndex>(handler.GetPackCount()));
+    }
+
+    Entity* EntityPool::Allocate() {
+        assert(false == _reserveIndices.empty());
+
+        const auto index = _reserveIndices.front();
+        _reserveIndices.pop_front();
+
+        auto* entity = new(&_buffer[index * sizeof(Entity)]) Entity(_handler, index);
+
+        const auto lastIndex = 0 == _handler.GetAllocCount() ? 0 : _handler.GetAllocCount() - 1;
+        _entities[lastIndex] = entity;
+        return entity;
+    }
+
+    void EntityPool::Deallocate(gsl::not_null<Entity*> entity) {
+        const auto index = entity->GetIndex();
+        const auto poolIndex = entity->GetPoolIndex();
+        _reserveIndices.emplace_back(poolIndex);
+
+        entity->~Entity();
+        _entities[index] = nullptr;
+
+        auto* lastEntity = _entities[_handler.GetAllocCount()];
+        if(nullptr == lastEntity) {
+            return;
+        }
+
+        lastEntity->ChangeIndex(index);
+        _entities[index] = lastEntity;
+        _entities[_handler.GetAllocCount()] = nullptr;
+    }
+
+    void EntityPool::Deallocate(BodyIndex bodyIndex) {
+        if(_entities.size() > bodyIndex && _entities[bodyIndex]) {
+            Deallocate(_entities[bodyIndex]);
         }
     }
 
+    void EntityPool::ReservePool(EntityPoolIndex count) {
+        assert(_buffer.empty());
+        _buffer.resize(count * sizeof(Entity));
+
+        for (decltype(count) i = 0; i < count; ++i) {
+            _reserveIndices.emplace_back(i);
+        }
+
+        _entities.resize(_handler.GetPackCount());
+    }
+
+    void EntityPool::Clear() {
+        _handler.Clear();
+
+        _reserveIndices.clear();
+        const auto count = static_cast<EntityPoolIndex>(_buffer.size() / sizeof(Entity));
+        for(std::remove_const_t<decltype(count)> i = 0; i < count; ++i) {
+            _reserveIndices.emplace_back(i);
+        }
+        _entities.resize(_handler.GetPackCount(), nullptr);
+    }
+
+    //=================================================================================================================
+    // Engine
+    //=================================================================================================================
     void Engine::RegistryTypeInformation(HashSizePairs&& types) {
         const auto hashes = std::views::keys(types);
         for (auto& instance : _instances) {
@@ -115,7 +181,7 @@ namespace ECS {
             }
         }
 
-        _instances.emplace_back(TypeInfo{ std::move(types) });
+        _instances.emplace_back(TypeInfo{ types });
     }
 
     ConstInstanceRefs Engine::CollectInstances(const Hashes& hashes) const {
@@ -128,19 +194,36 @@ namespace ECS {
         return result;
     }
 
+    void Engine::ClearCollector(const Collector& collector) const {
+        const auto findIterator = _entityPool.find(collector.handler);
+        if(_entityPool.end() == findIterator) {
+            return;
+        }
+
+        findIterator->second.Clear();
+    }
+
     Entity* Engine::CreateEntity(const Hashes& hashes) {
+        if(hashes.empty()) {
+            return nullptr;
+        }
+
         for (auto& instance : _instances) {
             if (const auto* handler = instance.FindHandler(hashes);
                 nullptr != handler) {
-                auto& entities = _entityPool[handler];
-                if(entities.size() < handler->GetPackCount()) {
-                    entities.resize(handler->GetPackCount());
-                }
-
                 ++_numEntities;
-                auto* entity = new Entity{ *handler };
-                entities[handler->GetAllocCount() - 1] = entity;
-                return entity;
+
+                if(const auto findIterator = _entityPool.find(handler);
+                    _entityPool.end() == findIterator) {
+                    if(const auto&[resultPair, isSuccess] = _entityPool.try_emplace(handler, *handler); 
+                        isSuccess) {
+                        return resultPair->second.Allocate();
+                    }
+                }
+                else {
+                    return findIterator->second.Allocate();
+                }
+                break;
             }
         }
 
@@ -154,21 +237,20 @@ namespace ECS {
     void Engine::DestroyEntity(gsl::not_null<const BodyHandler*>&& handler, BodyIndex index) {
         --_numEntities;
 
-        auto& entities = _entityPool[handler.get()];
-        delete entities[index];
-        entities[index] = nullptr;
-
-        auto* lastEntity = entities[handler->GetAllocCount()];
-        if(nullptr == lastEntity) {
+        const auto findIterator = _entityPool.find(handler.get());
+        if (_entityPool.end() == findIterator) {
             return;
         }
 
-        lastEntity->ChangeIndex(index);
-        entities[index] = lastEntity;
-        entities[handler->GetAllocCount()] = nullptr;
+        findIterator->second.Deallocate(index);
     }
 
-    const OwnerEntities& Engine::CollectEntities(const Collector& collector) {
-        return _entityPool[collector.handler];
+    Entities Engine::CollectEntities(const Collector& collector) const {
+        const auto findIterator = _entityPool.find(collector.handler);
+        if (_entityPool.end() == findIterator) {
+            return {};
+        }
+
+        return findIterator->second.GetEntities();
     }
 }

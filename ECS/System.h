@@ -1,8 +1,8 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #pragma once
 
-#include "Entity.h"
+#include <ECS/entity.h>
 
 namespace ECS {
     class System {
@@ -25,6 +25,23 @@ namespace ECS {
         template<typename T1>
         __inline T1* Accept(const Collector& collector) const noexcept {
             return reinterpret_cast<T1*>(collector.refs[0]);
+        }
+
+        template<typename T1, typename T2>
+        __inline std::pair<T1*, T2*> Accept(const Collector& collector) const noexcept {
+            return {
+                reinterpret_cast<T1*>(collector.refs[0]),
+                reinterpret_cast<T2*>(collector.refs[1]),
+            };
+        }
+
+        template<typename T1, typename T2, typename T3>
+        __inline std::tuple<T1*, T2*, T3*> Accept(const Collector& collector) const noexcept {
+            return {
+                reinterpret_cast<T1*>(collector.refs[0]),
+                reinterpret_cast<T2*>(collector.refs[1]),
+                reinterpret_cast<T3*>(collector.refs[2]),
+            };
         }
 
         template<typename T1, typename T2, typename T3, typename T4>

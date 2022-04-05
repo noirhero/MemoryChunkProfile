@@ -1,7 +1,7 @@
-// Copyright 2013-2021 AFI, Inc. All Rights Reserved.
+// Copyright 2013-2022 AFI, Inc. All Rights Reserved.
 
 #include <pch.h>
-#include "System.h"
+#include "system.h"
 
 namespace ECS {
     System::System(Hashes&& hashes) : _hashes(std::move(hashes)) {
